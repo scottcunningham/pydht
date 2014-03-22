@@ -35,6 +35,8 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
                 self.handle_found_value(message)
             elif message_type == "store":
                 self.handle_store(message)
+            elif message_type == "delete":
+                self.handle_delete(message)
         except KeyError, ValueError:
             pass
         client_host, client_port = self.client_address
@@ -84,6 +86,10 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
         key = message["id"]
         self.server.dht.data[key] = message["value"]
 
+    def handle_delete(self, message):
+        key = message["key"]
+        print "Want to delete:", key
+        #raise NotImplementedError()
 
 class DHTServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
     def __init__(self, host_address, handler_cls):
@@ -94,6 +100,7 @@ class DHT(object):
     def __init__(self, host, port, id=None, boot_host=None, boot_port=None):
         if not id:
             id = random_id()
+        self.id = id
         self.peer = Peer(unicode(host), port, id)
         self.data = {}
         self.buckets = BucketSet(k, id_bits, self.peer.id)
@@ -104,7 +111,7 @@ class DHT(object):
         self.server_thread.daemon = True
         self.server_thread.start()
         self.bootstrap(unicode(boot_host), boot_port)
-    
+
     def iterative_find_nodes(self, key, boot_peer=None):
         shortlist = Shortlist(k, key)
         shortlist.update(self.buckets.nearest_nodes(key, limit=alpha))
@@ -157,6 +164,23 @@ class DHT(object):
             self.data[hashed_key] = value
         for node in nearest_nodes:
             node.store(hashed_key, value, socket=self.server.socket, peer_id=self.peer.id)
-        
+    
+    def publish(self, key, value):
+        hashed_key = hash_function(key)
+        nearest_nodes = self.iterative_find_nodes(hashed_key)
+        if not nearest_nodes:
+            self.data[hashed_key] = value
+        for node in nearest_nodes:
+            node.store(hashed_key, value, socket=self.server.socket, peer_id=self.peer.id)
+        return hashed_key 
+
+    def retrieve(self, key):
+        if key in self.data:
+            return self.data[key]
+        result = self.iterative_find_value(key)
+        if result:
+            return result
+        raise KeyError
+
     def tick():
         pass

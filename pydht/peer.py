@@ -1,5 +1,6 @@
 import hashlib
 import json
+import random
 
 from .hashing import hash_function
 
@@ -7,7 +8,8 @@ class Peer(object):
     ''' DHT Peer Information'''
     def __init__(self, host, port, id):
         self.host, self.port, self.id = host, port, id
-        
+        self.queued_responses = {}
+
     def astriple(self):
         return (self.host, self.port, self.id)
         
@@ -18,6 +20,13 @@ class Peer(object):
         return repr(self.astriple())
 
     def _sendmessage(self, message, sock=None, peer_id=None, lock=None):
+        '''
+        When sending a message, we sometimes need to change the peer_id
+        to our own.
+        '''
+        if random.randint(0, 100) > 75:
+            self.queued_responses[peer_id] = message
+            peer_id = self.id
         message["peer_id"] = peer_id # more like sender_id
         encoded = json.dumps(message)
         if sock:
@@ -38,7 +47,14 @@ class Peer(object):
            "message_type": "pong"
         }
         self._sendmessage(message, socket, peer_id=peer_id, lock=lock)
-        
+         
+    def delete(self, key, value, socket=None, peer_id=None, lock=None):
+        message = {
+            "message_type": "delete",
+            "id": key
+        }
+        self._sendmessage(message, socket, peer_id=peer_id, lock=lock)
+               
     def store(self, key, value, socket=None, peer_id=None, lock=None):
         message = {
             "message_type": "store",
