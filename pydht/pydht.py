@@ -182,5 +182,14 @@ class DHT(object):
             return result
         raise KeyError
 
+    def downvote(self, key):
+        hashed_key = hash_function(key)
+        nearest_nodes = self.iterative_find_nodes(hashed_key)
+        if not nearest_nodes:
+            print "Asked myself to downvote a key: {}".format(key)
+        for node in nearest_nodes:
+            node.delete(hashed_key, socket=self.server.socket, peer_id=self.peer.id)
+ 
+
     def tick():
         pass
