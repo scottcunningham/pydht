@@ -4,6 +4,7 @@ import socket
 import SocketServer
 import threading
 import time
+from Crypto.PublicKey import RSA
 
 from .bucketset import BucketSet
 from .hashing import hash_function, random_id
@@ -14,6 +15,7 @@ k = 20
 alpha = 3
 id_bits = 128
 iteration_sleep = 1
+keysize = 2048
 
 class DHTRequestHandler(SocketServer.BaseRequestHandler):
 
@@ -101,7 +103,7 @@ class DHTServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
         self.send_lock = threading.Lock()
 
 class DHT(object):
-    def __init__(self, host, port, id=None, boot_host=None, boot_port=None):
+    def __init__(self, host, port, id=None, boot_host=None, boot_port=None, privkey=None, keys=None):
         if not id:
             id = random_id()
         self.id = id
@@ -114,6 +116,17 @@ class DHT(object):
         self.server_thread = threading.Thread(target=self.server.serve_forever)
         self.server_thread.daemon = True
         self.server_thread.start()
+        if keys:
+            self.keys = keys
+        else:
+            self.keys = {}
+        if privkey:
+            self.privkey = privkey
+        else:
+            privkey = RSA.generate(keysize)
+            f = open("keys/privkey-node{}.pem".format(id), 'w')
+            f.write(privkey.exportKey('PEM'))
+            f.close()
         self.bootstrap(unicode(boot_host), boot_port)
 
     def iterative_find_nodes(self, key, boot_peer=None):
@@ -171,19 +184,23 @@ class DHT(object):
     
     def publish(self, key, value):
         hashed_key = hash_function(key)
+        encrypted_value = self.privkey.encrypt(value)
         nearest_nodes = self.iterative_find_nodes(hashed_key)
         if not nearest_nodes:
-            self.data[hashed_key] = value
+            self.data[hashed_key] = encrypted_value 
         for node in nearest_nodes:
-            node.store(hashed_key, value, socket=self.server.socket, peer_id=self.peer.id)
+            node.store(hashed_key, encrypted_value, socket=self.server.socket, peer_id=self.peer.id)
         return hashed_key 
 
     def retrieve(self, key):
+        if key not in self.keys:
+            raise ValueError
         if key in self.data:
             return self.data[key]
         result = self.iterative_find_value(key)
         if result:
-            return result
+            decrypted_result = self.keys[key].decrypt(result)
+            return decrypted_result
         raise KeyError
 
     def downvote(self, key):

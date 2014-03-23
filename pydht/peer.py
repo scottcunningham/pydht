@@ -1,4 +1,4 @@
-import hashlib
+
 import json
 import random
 
@@ -48,9 +48,9 @@ class Peer(object):
         }
         self._sendmessage(message, socket, peer_id=peer_id, lock=lock)
          
-    def delete(self, key, value, socket=None, peer_id=None, lock=None):
+    def downvote(self, key, socket=None, peer_id=None, lock=None):
         message = {
-            "message_type": "delete",
+            "message_type": "downvote",
             "id": key
         }
         self._sendmessage(message, socket, peer_id=peer_id, lock=lock)
