@@ -35,8 +35,8 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
                 self.handle_found_value(message)
             elif message_type == "store":
                 self.handle_store(message)
-            elif message_type == "delete":
-                self.handle_delete(message)
+            elif message_type == "downvote":
+                self.handle_downvote(message)
         except KeyError, ValueError:
             pass
         client_host, client_port = self.client_address
@@ -86,10 +86,14 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
         key = message["id"]
         self.server.dht.data[key] = message["value"]
 
-    def handle_delete(self, message):
-        key = message["key"]
-        print "Want to delete:", key
-        #raise NotImplementedError()
+    def handle_downvote(self, message):
+        print "hi"
+        key = message["id"]
+        if key in self.server.dht.data:
+            del self.server.dht.data[key]
+            print "deleted", key
+        else:
+            print "no del"
 
 class DHTServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
     def __init__(self, host_address, handler_cls):
@@ -185,11 +189,12 @@ class DHT(object):
     def downvote(self, key):
         hashed_key = hash_function(key)
         nearest_nodes = self.iterative_find_nodes(hashed_key)
+        print "Downvoting", key
         if not nearest_nodes:
             print "Asked myself to downvote a key: {}".format(key)
         for node in nearest_nodes:
-            node.delete(hashed_key, socket=self.server.socket, peer_id=self.peer.id)
+            print "Asking another node to downvote", key
+            node.downvote(hashed_key, socket=self.server.socket, peer_id=self.peer.id)
  
-
     def tick():
         pass
