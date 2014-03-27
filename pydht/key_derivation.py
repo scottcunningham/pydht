@@ -10,7 +10,7 @@ import base64
 import json
 
 # We keep the salt defined to be the same since this is just a proof-of-contept
-SALT = bytes(12345678)
+SALT = bytes("12345678")
 ITERATIONS = 100000
 KEY_LENGTH_BYTES = 16  # 16 * 8 = 128bit key
 
