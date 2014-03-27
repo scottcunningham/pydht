@@ -11,13 +11,12 @@ import json
 
 # We keep the salt defined to be the same since this is just a proof-of-contept
 SALT = bytes(12345678)
-ITERATIONS = 1000
+ITERATIONS = 100000
 KEY_LENGTH_BYTES = 16  # 16 * 8 = 128bit key
 
-def make_keys(password, iterations=100000):
+def make_key(password):
     """
        password - The password.
-       salt - The salt to use. If not given, a new 8-byte salt will be generated.
        iterations - The number of iterations of PBKDF2 (default=100000).
 
        returns a key
@@ -58,8 +57,8 @@ def decrypt(ciphertext, key, iv):
 
 
 def do_encrypt(password, message):
-    aes_key = make_keys(password, iterations=ITERATIONS)
-    hmac_key = make_keys(password, iterations=ITERATIONS)
+    aes_key = make_key(password)
+    hmac_key = make_key(password)
     ciphertext, iv = encrypt(message, aes_key)
     hmac = make_hmac(ciphertext, hmac_key)
 
@@ -75,8 +74,8 @@ def do_decrypt(password, message):
     iv = base64.b64decode(data["iv"])
     salt = SALT
 
-    aes_key = make_keys(password, salt, iterations=ITERATIONS)
-    hmac_key = make_keys(password, salt, iterations=ITERATIONS)
+    aes_key = make_key(password, salt)
+    hmac_key = make_key(password, salt)
     hmac = make_hmac(ciphertext, hmac_key)
     if hmac != data["hmac"]:
         print("HMAC doesn't match. Either the password was wrong, or the message was altered")
