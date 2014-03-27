@@ -14,7 +14,7 @@ SALT = bytes(12345678)
 ITERATIONS = 100000
 KEY_LENGTH_BYTES = 16  # 16 * 8 = 128bit key
 
-def make_key(password):
+def make_key(password, iterations=ITERATIONS):
     """
        password - The password.
        iterations - The number of iterations of PBKDF2 (default=100000).
