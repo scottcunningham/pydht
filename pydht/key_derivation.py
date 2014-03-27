@@ -12,30 +12,18 @@ import json
 # We keep the salt defined to be the same since this is just a proof-of-contept
 SALT = bytes(12345678)
 ITERATIONS = 1000
-KEY_LENGTH = 128
+KEY_LENGTH_BYTES = 16  # 16 * 8 = 128bit key
 
-def make_keys(password, salt=None, iterations=100000):
-    """Generates two 128-bit keys from the given password using
-       PBKDF2-SHA256.
-       We use PBKDF2-SHA256 because we want the native output of PBKDF2 to be
-       256 bits. If we stayed at the default of PBKDF2-SHA1, then the entire
-       algorithm would run twice, which is slow for normal users, but doesn't
-       slow things down for attackers.
+def make_keys(password, iterations=100000):
+    """
        password - The password.
        salt - The salt to use. If not given, a new 8-byte salt will be generated.
        iterations - The number of iterations of PBKDF2 (default=100000).
 
-       returns (k1, k2, salt, interations)
+       returns a key
     """
-    if salt is None:
-        # Generate a random 8-byte salt
-        salt = Random.new().read(8)
-
-    # Generate a 32-byte (256-bit) key from the password
-    key = PBKDF2(password, salt, 32, iterations)
-
-    # Split the key into two 16-byte (128-bit) keys
-    return key[:16], key[16:]
+    key = PBKDF2(password, SALT, KEY_LENGTH_BYTES, iterations)
+    return key
 
 def encrypt(message, key):
     # IV needs to change every time 
@@ -70,7 +58,8 @@ def decrypt(ciphertext, key, iv):
 
 
 def do_encrypt(password, message):
-    aes_key, hmac_key = make_keys(password, iterations=ITERATIONS)
+    aes_key = make_keys(password, iterations=ITERATIONS)
+    hmac_key = make_keys(password, iterations=ITERATIONS)
     ciphertext, iv = encrypt(message, aes_key)
     hmac = make_hmac(ciphertext, hmac_key)
 
@@ -86,7 +75,8 @@ def do_decrypt(password, message):
     iv = base64.b64decode(data["iv"])
     salt = SALT
 
-    aes_key, hmac_key = make_keys(password, salt, iterations=ITERATIONS)
+    aes_key = make_keys(password, salt, iterations=ITERATIONS)
+    hmac_key = make_keys(password, salt, iterations=ITERATIONS)
     hmac = make_hmac(ciphertext, hmac_key)
     if hmac != data["hmac"]:
         print("HMAC doesn't match. Either the password was wrong, or the message was altered")
