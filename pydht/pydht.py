@@ -170,11 +170,14 @@ class DHT(object):
     
     def publish(self, key, value):
         hashed_key = hash_function(key)
+        # need to encrypt value
+        ciphertext = key_derivation.do_encrypt(key, value)
+
         nearest_nodes = self.iterative_find_nodes(hashed_key)
         if not nearest_nodes:
-            self.data[hashed_key] = value 
+            self.data[hashed_key] = ciphertext 
         for node in nearest_nodes:
-            node.store(hashed_key, value, socket=self.server.socket, peer_id=self.peer.id)
+            node.store(hashed_key, ciphertext, socket=self.server.socket, peer_id=self.peer.id)
         return hashed_key 
 
     def retrieve(self, key):
@@ -185,10 +188,13 @@ class DHT(object):
             result = self.data[hashed_key]
         else:
             result = self.iterative_find_value(hashed_key)
-        if result:
-            return result
-        print "key not found"
-        raise KeyError
+        if not result:
+            print "key not found"
+            raise KeyError
+        # result is encrypted + hmac'd
+        # Can throw ValueError if HMAC fails
+        plaintext = key_derivation.do_decrypt(key, result)
+        return plaintext
 
     def downvote(self, key):
         hashed_key = hash_function(key)
