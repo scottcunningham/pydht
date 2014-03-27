@@ -90,13 +90,9 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
         self.server.dht.data[key] = message["value"]
 
     def handle_downvote(self, message):
-        print "hi"
         key = message["id"]
         if key in self.server.dht.data:
             del self.server.dht.data[key]
-            print "deleted", key
-        else:
-            print "no del"
 
 class DHTServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
     def __init__(self, host_address, handler_cls):
