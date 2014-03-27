@@ -84,7 +84,7 @@ def do_decrypt(password, message):
     data = json.loads(message.decode("utf-8"))
     ciphertext = base64.b64decode(data["ciphertext"])
     iv = base64.b64decode(data["iv"])
-    salt = base64.b64decode(data["salt"])
+    salt = SALT
 
     aes_key, hmac_key = make_keys(password, salt, iterations=ITERATIONS)
     hmac = make_hmac(ciphertext, hmac_key)
