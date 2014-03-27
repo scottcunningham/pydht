@@ -169,30 +169,40 @@ class DHT(object):
             node.store(hashed_key, value, socket=self.server.socket, peer_id=self.peer.id)
     
     def publish(self, key, value):
+        print "key is", key
         hashed_key = hash_function(key)
+        print "hashed key is", hashed_key
         # need to encrypt value
         ciphertext = key_derivation.do_encrypt(key, value)
+        print "cyphertext is", ciphertext
 
         nearest_nodes = self.iterative_find_nodes(hashed_key)
         if not nearest_nodes:
+            print "storin locally"
             self.data[hashed_key] = ciphertext 
         for node in nearest_nodes:
+            print "sending away"
             node.store(hashed_key, ciphertext, socket=self.server.socket, peer_id=self.peer.id)
         return hashed_key 
 
     def retrieve(self, key):
         # Retrieve result
+        print "key is", key
         hashed_key = hash_function(key)
+        print "hashed key is", hashed_key
         result = None
         if hashed_key in self.data:
+            print "have it local"
             result = self.data[hashed_key]
         else:
+            print "somewhere else"
             result = self.iterative_find_value(hashed_key)
         if not result:
             print "key not found"
             raise KeyError
         # result is encrypted + hmac'd
         # Can throw ValueError if HMAC fails
+        print "ciphertext is", result
         plaintext = key_derivation.do_decrypt(key, result)
         return plaintext
 

@@ -10,7 +10,7 @@ import base64
 import json
 
 # We keep the salt defined to be the same since this is just a proof-of-contept
-SALT = bytes("12345678")
+SALT = "12345678"
 ITERATIONS = 100000
 KEY_LENGTH_BYTES = 16  # 16 * 8 = 128bit key
 
@@ -72,13 +72,12 @@ def do_decrypt(password, message):
     data = json.loads(message.decode("utf-8"))
     ciphertext = base64.b64decode(data["ciphertext"])
     iv = base64.b64decode(data["iv"])
-    salt = SALT
 
-    aes_key = make_key(password, salt)
-    hmac_key = make_key(password, salt)
+    aes_key = make_key(password)
+    hmac_key = make_key(password)
     hmac = make_hmac(ciphertext, hmac_key)
     if hmac != data["hmac"]:
         print("HMAC doesn't match. Either the password was wrong, or the message was altered")
-        raise ValueError
+        #raise ValueError
     output_data = decrypt(ciphertext, aes_key, iv)
     return output_data
