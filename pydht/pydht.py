@@ -4,11 +4,13 @@ import socket
 import SocketServer
 import threading
 import time
+import key_derivation
 
 from .bucketset import BucketSet
 from .hashing import hash_function, random_id
 from .peer import Peer
 from .shortlist import Shortlist
+
 
 k = 20
 alpha = 3
@@ -102,7 +104,7 @@ class DHTServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
         self.send_lock = threading.Lock()
 
 class DHT(object):
-    def __init__(self, host, port, id=None, boot_host=None, boot_port=None, privkey=None, keys=None):
+    def __init__(self, host, port, id=None, boot_host=None, boot_port=None):
         if not id:
             id = random_id()
         self.id = id
@@ -115,18 +117,6 @@ class DHT(object):
         self.server_thread = threading.Thread(target=self.server.serve_forever)
         self.server_thread.daemon = True
         self.server_thread.start()
-        if keys:
-            self.keys = keys
-        else:
-            self.keys = {}
-        if privkey:
-            self.privkey = privkey
-        else:
-            self.privkey = RSA.generate(keysize)
-            f = open("keys/privkey-node{}.pem".format(id), 'w')
-            f.write(self.privkey.exportKey('PEM'))
-            f.close()
-        self.keys[self.id] = self.privkey
         self.bootstrap(unicode(boot_host), boot_port)
 
     def iterative_find_nodes(self, key, boot_peer=None):
