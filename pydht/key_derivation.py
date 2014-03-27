@@ -21,7 +21,7 @@ def make_key(password, iterations=ITERATIONS):
 
        returns a key
     """
-    key = PBKDF2(password, SALT, KEY_LENGTH_BYTES, iterations)
+    key = PBKDF2(password, SALT, dkLen=KEY_LENGTH_BYTES, count=iterations)
     return key
 
 def encrypt(message, key):
@@ -78,6 +78,6 @@ def do_decrypt(password, message):
     hmac = make_hmac(ciphertext, hmac_key)
     if hmac != data["hmac"]:
         print("HMAC doesn't match. Either the password was wrong, or the message was altered")
-        #raise ValueError
+        raise ValueError
     output_data = decrypt(ciphertext, aes_key, iv)
     return output_data

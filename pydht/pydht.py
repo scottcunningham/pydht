@@ -1,6 +1,6 @@
 import json
 import random
-import socket
+import uuid
 import SocketServer
 import threading
 import time
@@ -91,6 +91,7 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
 
     def handle_downvote(self, message):
         key = message["id"]
+        print message["uid"]
         if key in self.server.dht.data:
             del self.server.dht.data[key]
 
@@ -168,7 +169,8 @@ class DHT(object):
         for node in nearest_nodes:
             node.store(hashed_key, value, socket=self.server.socket, peer_id=self.peer.id)
     
-    def publish(self, key, value):
+    def publish(self, value):
+        key = str(uuid.uuid4())
         print "key is", key
         hashed_key = hash_function(key)
         print "hashed key is", hashed_key
@@ -183,7 +185,7 @@ class DHT(object):
         for node in nearest_nodes:
             print "sending away"
             node.store(hashed_key, ciphertext, socket=self.server.socket, peer_id=self.peer.id)
-        return hashed_key 
+        return key
 
     def retrieve(self, key):
         # Retrieve result
@@ -207,6 +209,7 @@ class DHT(object):
         return plaintext
 
     def downvote(self, key):
+        uid = str(uuid.uuid4())
         hashed_key = hash_function(key)
         nearest_nodes = self.iterative_find_nodes(hashed_key)
         print "Downvoting", key
@@ -214,7 +217,7 @@ class DHT(object):
             print "Asked myself to downvote a key: {}".format(key)
         for node in nearest_nodes:
             print "Asking another node to downvote", key
-            node.downvote(hashed_key, socket=self.server.socket, peer_id=self.peer.id)
+            node.downvote(hashed_key, uid, socket=self.server.socket, peer_id=self.peer.id)
  
     def tick():
         pass

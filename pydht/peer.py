@@ -48,10 +48,11 @@ class Peer(object):
         }
         self._sendmessage(message, socket, peer_id=peer_id, lock=lock)
          
-    def downvote(self, key, socket=None, peer_id=None, lock=None):
+    def downvote(self, key, uid, socket=None, peer_id=None, lock=None):
         message = {
             "message_type": "downvote",
-            "id": key
+            "id": key,
+            "uid": uid
         }
         self._sendmessage(message, socket, peer_id=peer_id, lock=lock)
                
