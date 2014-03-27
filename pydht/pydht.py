@@ -4,7 +4,6 @@ import socket
 import SocketServer
 import threading
 import time
-from Crypto.PublicKey import RSA
 
 from .bucketset import BucketSet
 from .hashing import hash_function, random_id
@@ -123,10 +122,11 @@ class DHT(object):
         if privkey:
             self.privkey = privkey
         else:
-            privkey = RSA.generate(keysize)
+            self.privkey = RSA.generate(keysize)
             f = open("keys/privkey-node{}.pem".format(id), 'w')
-            f.write(privkey.exportKey('PEM'))
+            f.write(self.privkey.exportKey('PEM'))
             f.close()
+        self.keys[self.id] = self.privkey
         self.bootstrap(unicode(boot_host), boot_port)
 
     def iterative_find_nodes(self, key, boot_peer=None):
@@ -184,23 +184,24 @@ class DHT(object):
     
     def publish(self, key, value):
         hashed_key = hash_function(key)
-        encrypted_value = self.privkey.encrypt(value)
         nearest_nodes = self.iterative_find_nodes(hashed_key)
         if not nearest_nodes:
-            self.data[hashed_key] = encrypted_value 
+            self.data[hashed_key] = value 
         for node in nearest_nodes:
-            node.store(hashed_key, encrypted_value, socket=self.server.socket, peer_id=self.peer.id)
+            node.store(hashed_key, value, socket=self.server.socket, peer_id=self.peer.id)
         return hashed_key 
 
     def retrieve(self, key):
-        if key not in self.keys:
-            raise ValueError
-        if key in self.data:
-            return self.data[key]
-        result = self.iterative_find_value(key)
+        # Retrieve result
+        hashed_key = hash_function(key)
+        result = None
+        if hashed_key in self.data:
+            result = self.data[hashed_key]
+        else:
+            result = self.iterative_find_value(hashed_key)
         if result:
-            decrypted_result = self.keys[key].decrypt(result)
-            return decrypted_result
+            return result
+        print "key not found"
         raise KeyError
 
     def downvote(self, key):
