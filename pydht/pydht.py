@@ -11,7 +11,6 @@ from .hashing import hash_function, random_id
 from .peer import Peer
 from .shortlist import Shortlist
 
-
 k = 20
 alpha = 3
 id_bits = 128
@@ -24,6 +23,8 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
         try:
             message = json.loads(self.request[0].strip())
             message_type = message["message_type"]
+            print "Received message of type", message_type
+            print message
             if message_type == "ping":
                 self.handle_ping(message)
             elif message_type == "pong":
@@ -171,40 +172,40 @@ class DHT(object):
     
     def publish(self, value):
         key = str(uuid.uuid4())
-        print "key is", key
+        print "Publishing content under new key:", key
         hashed_key = hash_function(key)
-        print "hashed key is", hashed_key
+        print "Hashed key is:", hashed_key
         # need to encrypt value
         ciphertext = key_derivation.do_encrypt(key, value)
-        print "cyphertext is", ciphertext
+        print "Cyphertext is:", ciphertext
 
         nearest_nodes = self.iterative_find_nodes(hashed_key)
         if not nearest_nodes:
-            print "storin locally"
+            print "Storing data for key {} locally".format(key)
             self.data[hashed_key] = ciphertext 
         for node in nearest_nodes:
-            print "sending away"
+            print "Sending data for key {} to closer nodes.".format(key)
             node.store(hashed_key, ciphertext, socket=self.server.socket, peer_id=self.peer.id)
         return key
 
     def retrieve(self, key):
         # Retrieve result
-        print "key is", key
+        print "Looking up key:", key
         hashed_key = hash_function(key)
-        print "hashed key is", hashed_key
+        print "Hashed key is", hashed_key
         result = None
         if hashed_key in self.data:
-            print "have it local"
+            print "Data for key", "stored locally"
             result = self.data[hashed_key]
         else:
-            print "somewhere else"
+            print "Data stored somewhere else: forwarding requrest"
             result = self.iterative_find_value(hashed_key)
         if not result:
-            print "key not found"
+            print "Key", key, "not found"
             raise KeyError
         # result is encrypted + hmac'd
         # Can throw ValueError if HMAC fails
-        print "ciphertext is", result
+        print "Ciphertext is", result
         plaintext = key_derivation.do_decrypt(key, result)
         return plaintext
 
