@@ -17,14 +17,14 @@ id_bits = 128
 iteration_sleep = 1
 keysize = 2048
 
+
 class DHTRequestHandler(SocketServer.BaseRequestHandler):
 
     def handle(self):
         try:
             message = json.loads(self.request[0].strip())
             message_type = message["message_type"]
-            print "Received message of type", message_type
-            print message
+            print "Received message of type", message_type, "from", message["peer_id"]
             if message_type == "ping":
                 self.handle_ping(message)
             elif message_type == "pong":
@@ -38,8 +38,10 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
             elif message_type == "found_value":
                 self.handle_found_value(message)
             elif message_type == "store":
+                print "Request to store"
                 self.handle_store(message)
             elif message_type == "downvote":
+                print "Asked to downvote an item"
                 self.handle_downvote(message)
         except KeyError, ValueError:
             pass
@@ -53,10 +55,10 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
         id = message["peer_id"]
         peer = Peer(client_host, client_port, id)
         peer.pong(socket=self.server.socket, peer_id=self.server.dht.peer.id, lock=self.server.send_lock)
-        
+
     def handle_pong(self, message):
         pass
-        
+
     def handle_find(self, message, find_value=False):
         key = message["id"]
         id = message["peer_id"]
@@ -79,15 +81,17 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
         del self.server.dht.rpc_ids[rpc_id]
         nearest_nodes = [Peer(*peer) for peer in message["nearest_nodes"]]
         shortlist.update(nearest_nodes)
-        
+
     def handle_found_value(self, message):
         rpc_id = message["rpc_id"]
         shortlist = self.server.dht.rpc_ids[rpc_id]
         del self.server.dht.rpc_ids[rpc_id]
         shortlist.set_complete(message["value"])
-        
+
     def handle_store(self, message):
         key = message["id"]
+        print "Asked to store data for id", key
+        print "Ciphertext is", message["value"]
         self.server.dht.data[key] = message["value"]
 
     def handle_downvote(self, message):
@@ -134,7 +138,7 @@ class DHT(object):
             time.sleep(iteration_sleep)
             boot_peer = None
         return shortlist.results()
-        
+
     def iterative_find_value(self, key):
         shortlist = Shortlist(k, key)
         shortlist.update(self.buckets.nearest_nodes(key, limit=alpha))
@@ -147,12 +151,12 @@ class DHT(object):
                 peer.find_value(key, rpc_id, socket=self.server.socket, peer_id=self.peer.id) #####
             time.sleep(iteration_sleep)
         return shortlist.completion_result()
-            
+
     def bootstrap(self, boot_host, boot_port):
         if boot_host and boot_port:
             boot_peer = Peer(boot_host, boot_port, 0)
             self.iterative_find_nodes(self.peer.id, boot_peer=boot_peer)
-                    
+
     def __getitem__(self, key):
         hashed_key = hash_function(key)
         if hashed_key in self.data:
@@ -161,7 +165,7 @@ class DHT(object):
         if result:
             return result
         raise KeyError
-        
+
     def __setitem__(self, key, value):
         hashed_key = hash_function(key)
         nearest_nodes = self.iterative_find_nodes(hashed_key)
@@ -169,7 +173,7 @@ class DHT(object):
             self.data[hashed_key] = value
         for node in nearest_nodes:
             node.store(hashed_key, value, socket=self.server.socket, peer_id=self.peer.id)
-    
+
     def publish(self, value):
         key = str(uuid.uuid4())
         print "Publishing content under new key:", key
@@ -182,7 +186,7 @@ class DHT(object):
         nearest_nodes = self.iterative_find_nodes(hashed_key)
         if not nearest_nodes:
             print "Storing data for key {} locally".format(key)
-            self.data[hashed_key] = ciphertext 
+            self.data[hashed_key] = ciphertext
         for node in nearest_nodes:
             print "Sending data for key {} to closer nodes.".format(key)
             node.store(hashed_key, ciphertext, socket=self.server.socket, peer_id=self.peer.id)
@@ -198,7 +202,7 @@ class DHT(object):
             print "Data for key", "stored locally"
             result = self.data[hashed_key]
         else:
-            print "Data stored somewhere else: forwarding requrest"
+            print "Data stored somewhere else: forwarding request"
             result = self.iterative_find_value(hashed_key)
         if not result:
             print "Key", key, "not found"
@@ -219,6 +223,6 @@ class DHT(object):
         for node in nearest_nodes:
             print "Asking another node to downvote", key
             node.downvote(hashed_key, uid, socket=self.server.socket, peer_id=self.peer.id)
- 
+
     def tick():
         pass
