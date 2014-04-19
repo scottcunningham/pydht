@@ -96,7 +96,7 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
 
     def handle_downvote(self, message):
         key = message["id"]
-        print message["uid"]
+        print "Downvote for key", key, " -- uuid is ", message["uid"]
         if key in self.server.dht.data:
             del self.server.dht.data[key]
 
@@ -112,6 +112,9 @@ class DHT(object):
         self.id = id
         self.peer = Peer(unicode(host), port, id)
         self.data = {}
+        self.data_decays = {}
+        self.pending_replies = {}
+        pass
         self.buckets = BucketSet(k, id_bits, self.peer.id)
         self.rpc_ids = {} # should probably have a lock for this
         self.server = DHTServer(self.peer.address(), DHTRequestHandler)
