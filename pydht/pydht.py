@@ -1,3 +1,4 @@
+import math
 import json
 import random
 import uuid
@@ -17,6 +18,7 @@ id_bits = 128
 iteration_sleep = 1
 keysize = 2048
 
+DEFAULT_TTL = 604800  # = 7 days, in seconds.
 
 class DHTRequestHandler(SocketServer.BaseRequestHandler):
 
@@ -93,12 +95,12 @@ class DHTRequestHandler(SocketServer.BaseRequestHandler):
         print "Asked to store data for id", key
         print "Ciphertext is", message["value"]
         self.server.dht.data[key] = message["value"]
+        self.server.dht.ttls[key] = DEFAULT_TTL
 
     def handle_downvote(self, message):
         key = message["id"]
         print "Downvote for key", key, " -- uuid is ", message["uid"]
-        if key in self.server.dht.data:
-            del self.server.dht.data[key]
+	self.server.dht.handle_downvote(key, uuid)
 
 class DHTServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
     def __init__(self, host_address, handler_cls):
@@ -111,11 +113,15 @@ class DHT(object):
             id = random_id()
         self.id = id
         self.peer = Peer(unicode(host), port, id)
+
+	# Data and data decay data structures	
         self.data = {}
-        self.data_decays = {}
+        self.recent_downvotes = []
+	self.downvotes = {}
+	self.ttls = {}
+
         self.pending_replies = {}
-        pass
-        self.buckets = BucketSet(k, id_bits, self.peer.id)
+	self.buckets = BucketSet(k, id_bits, self.peer.id)
         self.rpc_ids = {} # should probably have a lock for this
         self.server = DHTServer(self.peer.address(), DHTRequestHandler)
         self.server.dht = self
@@ -227,5 +233,18 @@ class DHT(object):
             print "Asking another node to downvote", key
             node.downvote(hashed_key, uid, socket=self.server.socket, peer_id=self.peer.id)
 
-    def tick():
-        pass
+    def handle_downvote(self, key, uuid):
+	if uuid in self.recent_downvotes:
+	    return
+	if key not in self.data:
+            return
+	self.downvotes[key] += 1
+	self.recent_downvotes.append(uuid)
+
+    def tick(self):
+	for (uuid, downvotes) in self.downvotes.items():
+            downvote_val = math.log(downvotes, 2)
+            self.ttls[uuid] -= downvote_val
+        for (uuid, ttl) in self.ttls.items():
+	    if ttl <= 0:
+                print "UUID", uuid, " past TTL - deleting"
