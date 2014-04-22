@@ -1,6 +1,6 @@
 # Adapted from examples from:
 # https://bitbucket.org/brendanlong/python-encryption
-# Released into the Public Domain 
+# Released into the Public Domain
 
 from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
@@ -25,7 +25,7 @@ def make_key(password, iterations=ITERATIONS):
     return key
 
 def encrypt(message, key):
-    # IV needs to change every time 
+    # IV needs to change every time
     iv = Random.new().read(AES.block_size)
     cipher = AES.new(key, AES.MODE_CFB, iv)
     ciphertext = cipher.encrypt(message)
